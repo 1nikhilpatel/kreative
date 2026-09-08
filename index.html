@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThermalShield — Area Specific Passive Shelter Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  --bg:#f4f8ff; --panel:#ffffff; --panel2:#f7fbff; --line:#dbe6f2;
+  --text:#2f3031; --muted:#6d8098; --cyan:#149fc9; --blue:#5c7cff;
+  --violet:#9a72e8; --green:#1da879; --amber:#e7a83e; --red:#e45d73;
+  --shadow:0 18px 50px rgba(146, 179, 221, 0.912);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:
+ radial-gradient(circle at 8% 0%,rgba(86, 211, 245, 0.397),transparent 28%),
+ radial-gradient(circle at 92% 8%,rgba(154,114,232,.18),transparent 30%),
+ radial-gradient(circle at 55% 100%,rgba(108, 129, 216, 0.703),transparent 32%),
+ linear-gradient(135deg,#f8fbff 0%,#eef7ff 46%,#f7f1ff 100%);
+ color:var(--text);font-family:Inter,"Helvetica Neue",Helvetica,Arial,sans-serif;min-height:100vh}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+.sidebar{position:sticky;top:0;height:100vh;border-right:1px solid var(--line);background:rgba(255,255,255,.84);backdrop-filter:blur(20px);padding:24px 16px;display:flex;flex-direction:column;z-index:20}
+.brand{display:flex;align-items:center;gap:11px;padding:5px 10px 26px}
+.logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--cyan),var(--blue),var(--violet));display:grid;place-items:center;box-shadow:0 8px 30px rgba(72,215,255,.22)}
+.logo svg{width:22px;height:22px}
+.brand b{font-family:Manrope;font-size:16px;letter-spacing:.2px}.brand span{display:block;color:var(--muted);font-size:10px;margin-top:2px;letter-spacing:1.2px;text-transform:uppercase}
+.nav-label{color:#536b85;font-size:10px;text-transform:uppercase;letter-spacing:1.4px;padding:0 11px 9px;margin-top:8px}
+.nav button{width:100%;display:flex;align-items:center;gap:11px;border:0;background:transparent;color:#647991;padding:12px 11px;border-radius:10px;text-align:left;margin-bottom:3px}
+.nav button:hover,.nav button.active{background:rgba(72,215,255,.08);color:#17253a}
+.nav button.active{box-shadow:inset 3px 0 0 var(--cyan)}
+.ico{width:17px;height:17px;opacity:.9}
+.side-bottom{margin-top:auto;padding:13px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(135deg,rgba(72,215,255,.06),rgba(167,123,255,.05))}
+.side-bottom small{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1.1px}.side-bottom strong{display:block;margin-top:6px;font-size:12px}.status-dot{display:inline-block;width:7px;height:7px;background:var(--green);border-radius:50%;margin-right:6px;box-shadow:0 0 12px var(--green)}
+main{min-width:0}
+.topbar{height:70px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 30px;position:sticky;top:0;background:rgba(255,255,255,.80);backdrop-filter:blur(18px);z-index:15}
+.crumb{color:var(--muted);font-size:12px}.crumb b{color:#17253a}
+.top-actions{display:flex;align-items:center;gap:9px}.pill{padding:8px 11px;border:1px solid var(--line);border-radius:9px;color:#5f738b;font-size:11px;background:rgba(70,100,135,.035)}
+.primary{border:0!important;color:#ffffff!important;background:linear-gradient(135deg,var(--cyan),#8ceaff);font-weight:800;box-shadow:0 8px 28px rgba(72,215,255,.17)}
+.content{padding:28px 30px 50px;max-width:1600px;margin:auto}
+.hero{display:flex;justify-content:space-between;gap:25px;align-items:flex-end;margin-bottom:25px}
+.kicker{color:var(--cyan);font-size:10px;text-transform:uppercase;letter-spacing:2px;font-weight:700}.hero h1{font:800 32px Manrope;margin:7px 0 8px;letter-spacing:-1px}.hero p{color:var(--muted);margin:0;max-width:720px;line-height:1.55;font-size:13px}
+.hero-stat{min-width:235px;padding:16px;border:1px solid var(--line);border-radius:15px;background:linear-gradient(135deg,rgba(72,215,255,.07),rgba(167,123,255,.07))}
+.hero-stat span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px}.hero-stat b{font-size:24px;display:block;margin-top:5px}.hero-stat em{font-style:normal;color:var(--green);font-size:11px}
+.grid{display:grid;gap:16px}.g4{grid-template-columns:repeat(4,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:1.45fr 1fr}
+.card{border:1px solid var(--line);background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(247,251,255,.96));border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.card-head{padding:17px 18px;border-bottom:1px solid rgba(32,51,76,.7);display:flex;align-items:center;justify-content:space-between}.card-head h3{font:700 13px Manrope;margin:0}.card-head small{color:var(--muted);font-size:10px}.card-body{padding:18px}
+.metric{min-height:126px;padding:17px;position:relative}.metric .label{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1.1px}.metric .value{font:800 26px Manrope;margin-top:9px}.metric .sub{font-size:10px;color:#7189a3;margin-top:6px}.metric .mark{position:absolute;right:17px;top:18px;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:rgba(72,215,255,.08);color:var(--cyan)}
+.map-card{min-height:425px}.map{height:365px}.leaflet-container{background:#eaf3fb}.leaflet-control-zoom a{background:#ffffff!important;color:#31445d!important;border-color:#c9d8e8!important}
+.profile{display:grid;grid-template-columns:1fr 1fr;gap:10px}.data{padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(70,100,135,.035)}.data span{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px}.data b{display:block;margin-top:5px;font-size:14px}
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.field label{display:block;color:#6b8098;font-size:10px;text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px}.field input,.field select{width:100%;background:#f7faff;border:1px solid #c9d8e8;color:#17253a;border-radius:9px;padding:10px 11px;outline:none}.field input:focus,.field select:focus{border-color:var(--cyan)}
+.range-row{display:flex;justify-content:space-between;align-items:center}.range-val{color:var(--cyan);font-weight:700}.range{width:100%;accent-color:var(--cyan)}
+.orientation{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.ori{border:1px solid var(--line);background:#f7faff;color:#7f95ac;padding:8px 3px;border-radius:7px;font-size:10px}.ori.selected{background:rgba(72,215,255,.12);color:var(--cyan);border-color:rgba(72,215,255,.55)}
+.shelter{height:310px;display:grid;place-items:center;background:
+ radial-gradient(circle at 50% 35%,rgba(72,215,255,.09),transparent 35%),
+ repeating-linear-gradient(0deg,transparent 0 39px,rgba(70,100,135,.07) 40px),
+ repeating-linear-gradient(90deg,transparent 0 39px,rgba(70,100,135,.07) 40px);position:relative}
+.house{width:290px;height:160px;position:relative;transform:perspective(600px) rotateX(4deg)}
+.house .wall{position:absolute;left:30px;bottom:0;width:230px;height:125px;background:linear-gradient(90deg,#8c6f58,#b09270);border:3px solid #d2b998}
+.house .roof{position:absolute;left:10px;top:7px;width:270px;height:85px;background:linear-gradient(145deg,#5f7384,#a4b3be);clip-path:polygon(50% 0,100% 42%,92% 52%,50% 19%,8% 52%,0 42%);border-bottom:5px solid var(--cyan)}
+.house .window{position:absolute;bottom:42px;width:34px;height:34px;background:#4bc8e8;border:3px solid #d4f5ff}.w1{left:67px}.w2{right:67px}.door{position:absolute;bottom:0;left:123px;width:43px;height:75px;background:#354a60;border:3px solid #c0d0df}.sun{position:absolute;top:32px;right:65px;color:var(--amber);font-size:26px}.heat-arrow{position:absolute;left:55px;top:120px;color:var(--cyan);font-size:24px;transform:rotate(-18deg)}
+.section-title{margin:29px 0 13px;font:700 15px Manrope}.tag{font-size:9px;padding:5px 7px;border-radius:6px;background:rgba(72,215,255,.08);color:var(--cyan);border:1px solid rgba(72,215,255,.18)}
+.material-table{width:100%;border-collapse:collapse}.material-table th,.material-table td{text-align:left;padding:11px 8px;border-bottom:1px solid rgba(32,51,76,.7);font-size:10px}.material-table th{color:#66819d;text-transform:uppercase;letter-spacing:.7px;font-weight:600}.material-table td{color:#52677f}.material-table td:first-child{color:#17253a;font-weight:600}.select-material{background:#f7faff;color:#17253a;border:1px solid #c9d8e8;border-radius:7px;padding:6px}
+.material-stack{display:flex;flex-direction:column;gap:6px;margin-top:8px}.layer{padding:13px;border-radius:8px;border:1px solid var(--line);display:flex;justify-content:space-between;background:linear-gradient(90deg,rgba(72,215,255,.07),rgba(167,123,255,.04));font-size:10px}.layer span{color:var(--muted)}
+.chart-wrap{height:300px;padding:15px}.chart-wrap canvas{width:100%!important;height:100%!important}
+.heatmap{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.heat{padding:15px 10px;border:1px solid var(--line);border-radius:10px;background:#f7faff;text-align:center}.heat b{font-size:17px;display:block}.heat span{font-size:9px;color:var(--muted);display:block;margin-top:4px}.heat .bar{height:5px;border-radius:10px;background:linear-gradient(90deg,var(--cyan),var(--violet));margin-top:11px}
+.rec{padding:14px;border:1px solid rgba(72,224,173,.25);background:linear-gradient(135deg,rgba(72,224,173,.08),rgba(72,215,255,.04));border-radius:11px;margin-bottom:9px}.rec b{font-size:11px}.rec p{font-size:10px;color:#6f8299;line-height:1.5;margin:6px 0}.rec button{font-size:9px;padding:6px 9px;border-radius:6px;border:1px solid rgba(72,224,173,.25);background:rgba(72,224,173,.08);color:var(--green)}
+.comfort{text-align:center;padding:22px}.comfort-ring{width:145px;height:145px;margin:4px auto 15px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--green) 0 87%,#1b2b40 87% 100%);position:relative}.comfort-ring:after{content:"";position:absolute;inset:11px;border-radius:50%;background:#194179}.comfort-ring div{position:relative;z-index:1}.comfort-ring b{display:block;font:800 28px Manrope}.comfort-ring span{color:var(--bg);font-size:9px}
+.costline{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:11px}.costline span{color:var(--muted)}.total{font-size:17px;font-weight:800;padding-top:13px}.progress{height:8px;background:#e3edf7;border-radius:8px;overflow:hidden;margin-top:9px}.progress i{display:block;height:100%;width:86%;background:linear-gradient(90deg,var(--cyan),var(--violet));border-radius:8px}
+.compare{width:100%;border-collapse:collapse}.compare th,.compare td{padding:10px;border-bottom:1px solid var(--line);font-size:10px;text-align:center}.compare th{color:#6e88a3;text-transform:uppercase}.compare th:first-child,.compare td:first-child{text-align:left}.best{background:rgba(72,224,173,.06);color:var(--green)!important}
+.footer-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}.btn{padding:11px 15px;border-radius:9px;border:1px solid var(--line);background:#ffffff;color:#42566f;font-size:11px;font-weight:700}.btn.primary{background:linear-gradient(135deg,var(--cyan),#91eaff);color:#ffffff;border:0}
+.toast{position:fixed;right:24px;bottom:24px;padding:12px 15px;background:#ffffff;border:1px solid #2b4663;border-radius:10px;box-shadow:var(--shadow);font-size:11px;transform:translateY(100px);opacity:0;transition:.3s;z-index:100}.toast.show{transform:translateY(0);opacity:1}
+.page{display:none}.page.active{display:block}
+@media(max-width:1100px){.app{grid-template-columns:82px 1fr}.sidebar{padding:20px 10px}.brand div:last-child,.nav button span,.nav-label,.side-bottom{display:none}.brand{justify-content:center;padding-bottom:24px}.nav button{justify-content:center}.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:800px){.app{display:block}.sidebar{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--line);display:block}.brand div:last-child,.nav button span,.nav-label{display:block}.nav{display:flex;overflow:auto}.nav button{min-width:max-content}.side-bottom{display:none}.topbar{position:relative}.content{padding:20px}.hero,.g2,.g3{grid-template-columns:1fr;display:grid}.form-grid{grid-template-columns:1fr}.map{height:280px}.map-card{min-height:auto}.hero-stat{min-width:0}.orientation{grid-template-columns:repeat(4,1fr)}}
+
+/* Dynamic map treatment */
+.map-card{position:relative}
+.map-shell{position:relative;overflow:hidden;border-radius:0 0 16px 16px}
+.map-overlay{
+  position:absolute;inset:0;z-index:500;pointer-events:none;
+  background:
+    radial-gradient(circle at 62% 39%,rgba(20,159,201,.12),transparent 18%),
+    radial-gradient(circle at 45% 65%,rgba(154,114,232,.10),transparent 28%);
+  mix-blend-mode:multiply;
+}
+.map-scan{
+  position:absolute;left:0;right:0;top:-20%;height:2px;z-index:501;
+  background:linear-gradient(90deg,transparent,rgba(20,159,201,.0),rgba(20,159,201,.7),rgba(154,114,232,.0),transparent);
+  box-shadow:0 0 18px rgba(20,159,201,.45);
+  animation:mapScan 5s linear infinite;pointer-events:none;
+}
+.map-location-badge{
+  position:absolute;left:16px;top:16px;z-index:600;
+  padding:9px 11px;border:1px solid rgba(255,255,255,.75);
+  border-radius:10px;background:rgba(255,255,255,.82);
+  backdrop-filter:blur(12px);box-shadow:0 10px 28px rgba(60,90,125,.12);
+  color:#263c56;font-size:10px;font-weight:700;letter-spacing:.2px;pointer-events:none
+}
+.map-location-badge span{display:block;color:#7187a0;font-size:8px;font-weight:500;margin-top:3px}
+.map-compass{
+  position:absolute;right:15px;top:15px;z-index:600;width:42px;height:42px;
+  border:1px solid rgba(255,255,255,.8);border-radius:50%;
+  background:rgba(255,255,255,.82);backdrop-filter:blur(10px);
+  display:grid;place-items:center;box-shadow:0 10px 28px rgba(60,90,125,.12);
+  color:#5c7cff;font:800 10px Manrope;pointer-events:none
+}
+.map-compass:after{content:"";position:absolute;width:2px;height:15px;background:linear-gradient(#e45d73 0 50%,#5c7cff 50%);transform:rotate(0deg);border-radius:2px}
+.map-legend{
+  position:absolute;right:15px;bottom:15px;z-index:600;
+  padding:9px 10px;border:1px solid rgba(255,255,255,.78);border-radius:9px;
+  background:rgba(255,255,255,.84);backdrop-filter:blur(10px);
+  box-shadow:0 10px 28px rgba(60,90,125,.10);font-size:8px;color:#7187a0;pointer-events:none
+}
+.legend-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#1aa9d6;box-shadow:0 0 9px rgba(20,159,201,.55);margin-right:5px}
+.dynamic-marker{position:relative;width:30px;height:30px}
+.dynamic-marker .core{
+  position:absolute;left:9px;top:9px;width:12px;height:12px;border-radius:50%;
+  background:#fff;border:4px solid #149fc9;box-shadow:0 0 0 2px rgba(255,255,255,.9),0 0 18px rgba(20,159,201,.55)
+}
+.dynamic-marker .pulse{
+  position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;
+  border:1px solid rgba(20,159,201,.65);animation:markerPulse 2.1s ease-out infinite
+}
+.dynamic-marker .pulse2{
+  position:absolute;left:-3px;top:-3px;width:36px;height:36px;border-radius:50%;
+  border:1px solid rgba(154,114,232,.35);animation:markerPulse 2.1s .65s ease-out infinite
+}
+@keyframes markerPulse{0%{transform:scale(.35);opacity:.9}80%,100%{transform:scale(1.35);opacity:0}}
+@keyframes mapScan{0%{top:-10%}100%{top:110%}}
+
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8"><path d="M4 15.5 12 5l8 10.5"/><path d="M6.5 14.5V20h11v-5.5"/><path d="M12 8.5v6"/><path d="M9 11.5h6"/></svg>
+    </div>
+    <div><b>THERMALSHIELD</b><span>Passive Design Engine</span></div>
+  </div>
+  <div class="nav-label">Workspace</div>
+  <nav class="nav">
+    <button class="active" data-page="studio"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 20h18M5 17V7l7-4 7 4v10M9 17v-5h6v5"/></svg><span>Design Studio</span></button>
+    <button data-page="materials"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6h16v12H4z"/><path d="m4 10 4 3 4-3 4 3 4-3"/></svg><span>Material Lab</span></button>
+    <button data-page="simulation"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 17V7M10 20V4M16 16V8M22 19V5"/></svg><span>Simulations</span></button>
+    <button data-page="compare"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/></svg><span>Compare Designs</span></button>
+    <button data-page="reports"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg><span>Reports</span></button>
+  </nav>
+  <div class="side-bottom"><small>System</small><strong><i class="status-dot"></i>Simulation engine ready</strong></div>
+</aside>
+
+<main>
+<header class="topbar">
+  <div class="crumb">Projects / <b>Ladakh Passive Shelter</b></div>
+  <div class="top-actions"><div class="pill">DRDO • SIH26051</div><button class="pill primary" id="newBtn">+ New Design</button></div>
+</header>
+
+<section id="studio" class="page active">
+<div class="content">
+  <div class="hero">
+    <div><div class="kicker">Environmental Systems / Thermal Control</div><h1>Design Studio</h1><p>Location-specific passive shelter design using regional climate data, shelter geometry, material properties and thermal simulation.</p></div>
+    <div class="hero-stat"><span>Current design score</span><b id="score">86 / 100</b><em>↑ optimized for cold climate</em></div>
+  </div>
+
+  <div class="grid g4">
+    <div class="card metric"><div class="label">Outdoor temperature</div><div class="value" id="outTemp">−14°C</div><div class="sub">Ladakh • winter profile</div><div class="mark">T</div></div>
+    <div class="card metric"><div class="label">Solar radiation</div><div class="value">640 <small style="font-size:12px">W/m²</small></div><div class="sub">High solar availability</div><div class="mark">S</div></div>
+    <div class="card metric"><div class="label">Wind velocity</div><div class="value">21 <small style="font-size:12px">km/h</small></div><div class="sub">Envelope infiltration input</div><div class="mark">W</div></div>
+    <div class="card metric"><div class="label">Target comfort</div><div class="value">20–24°C</div><div class="sub">Human comfort band</div><div class="mark">C</div></div>
+  </div>
+
+  <div class="section-title">01 — Location & Shelter Input</div>
+  <div class="grid g2">
+    <div class="card map-card">
+      <div class="card-head"><h3>Interactive Region Map</h3><span class="tag">MAP PICKER</span></div>
+      <div class="map-shell">
+  <div id="map" class="map"></div>
+  <div class="map-overlay"></div>
+  <div class="map-scan"></div>
+  <div class="map-location-badge">ACTIVE REGION<span>Leh • Ladakh</span></div>
+  <div class="map-compass">N</div>
+  <div class="map-legend"><i class="legend-dot"></i>Selected design point</div>
+</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Location Profile</h3><small>Selected point</small></div>
+      <div class="card-body">
+        <div class="profile">
+          <div class="data"><span>Region</span><b id="region">Leh, Ladakh</b></div>
+          <div class="data"><span>Climate</span><b>High-altitude cold</b></div>
+          <div class="data"><span>Latitude</span><b id="lat">34.1526° N</b></div>
+          <div class="data"><span>Longitude</span><b id="lng">77.5771° E</b></div>
+          <div class="data"><span>Humidity</span><b>38 %</b></div>
+          <div class="data"><span>Solar availability</span><b>High</b></div>
+        </div>
+        <div style="margin-top:16px;color:#7890a8;font-size:10px;line-height:1.6">Map selection is designed to feed latitude/longitude into the weather and thermal calculation layer.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">02 — Shelter Configuration</div>
+  <div class="grid g2">
+    <div class="card"><div class="card-head"><h3>Engineering Parameters</h3><small>User defined values</small></div><div class="card-body">
+      <div class="form-grid">
+        <div class="field"><label>Length (m)</label><input id="length" type="number" value="12" step=".1"></div>
+        <div class="field"><label>Width (m)</label><input id="width" type="number" value="8" step=".1"></div>
+        <div class="field"><label>Height (m)</label><input id="height" type="number" value="3.5" step=".1"></div>
+        <div class="field"><label>Wall thickness (mm)</label><input id="thickness" type="number" value="450" step="10"></div>
+        <div class="field"><label>Budget (₹)</label><input id="budget" type="number" value="500000" step="1000"></div>
+        <div class="field"><label>Shelter use</label><select><option>Rural Housing</option><option>Grain Storage</option><option>Livestock Shed</option><option>Defense Shelter</option></select></div>
+      </div>
+      <div style="height:1px;background:var(--line);margin:17px 0"></div>
+      <div class="field"><label>Roof angle <span class="range-val" id="roofVal">35°</span></label><input class="range" id="roof" type="range" min="10" max="60" value="35"></div>
+      <div style="height:14px"></div>
+      <div class="field"><label>Orientation</label><div class="orientation" id="orientation"><button class="ori">N</button><button class="ori">NE</button><button class="ori">E</button><button class="ori">SE</button><button class="ori selected">S</button><button class="ori">SW</button><button class="ori">W</button><button class="ori">NW</button></div></div>
+    </div></div>
+    <div class="card"><div class="card-head"><h3>Live Shelter Preview</h3><small id="dims">12 × 8 × 3.5 m</small></div><div class="shelter">
+      <div class="sun">☼</div><div class="heat-arrow">↗</div>
+      <div class="house"><div class="roof"></div><div class="wall"></div><div class="window w1"></div><div class="window w2"></div><div class="door"></div></div>
+    </div></div>
+  </div>
+
+  <div class="section-title">03 — Design Inputs Summary</div>
+  <div class="grid g3">
+    <div class="card"><div class="card-head"><h3>Wall System</h3><span class="tag">450 MM</span></div><div class="card-body"><div class="material-stack"><div class="layer"><b>Mud Brick</b><span>High thermal mass</span></div><div class="layer"><b>Straw / local insulation</b><span>Low U-value layer</span></div><div class="layer"><b>Mud plaster</b><span>Interior finish</span></div></div></div></div>
+    <div class="card"><div class="card-head"><h3>Roof System</h3><span class="tag">35° SOUTH</span></div><div class="card-body"><div class="material-stack"><div class="layer"><b>Insulated sloped roof</b><span>Reduced heat loss</span></div><div class="layer"><b>Reflective surface</b><span>Solar management</span></div></div></div></div>
+    <div class="card"><div class="card-head"><h3>Openings</h3><span class="tag">PASSIVE</span></div><div class="card-body"><div class="profile"><div class="data"><span>Windows</span><b>4</b></div><div class="data"><span>Doors</span><b>1</b></div><div class="data"><span>Window area</span><b>8.5 m²</b></div><div class="data"><span>North exposure</span><b>Minimized</b></div></div></div></div>
+  </div>
+
+  <div class="footer-actions"><button class="btn" id="resetBtn">Reset</button><button class="btn primary" id="simulateBtn">Run Thermal Simulation →</button></div>
+</div>
+</section>
+
+<section id="materials" class="page">
+<div class="content">
+  <div class="hero"><div><div class="kicker">Material intelligence</div><h1>Material Laboratory</h1><p>Compare wall and roof systems under the same ambient condition and evaluate thermal performance.</p></div></div>
+  <div class="card"><div class="card-head"><h3>Wall Material Comparison</h3><span class="tag">COLD CLIMATE</span></div><div class="card-body">
+  <table class="material-table"><thead><tr><th>Material</th><th>Typical thickness</th><th>Thermal conductivity</th><th>Thermal mass</th><th>Indicative U-value</th><th>Selection</th></tr></thead><tbody>
+    <tr><td>Mud Brick</td><td>300–450 mm</td><td>Low–medium</td><td>High</td><td>0.28</td><td><select class="select-material"><option selected>Selected</option><option>Compare</option></select></td></tr>
+    <tr><td>Stone</td><td>300–450 mm</td><td>Medium</td><td>High</td><td>0.45</td><td><select class="select-material"><option>Selected</option><option selected>Compare</option></select></td></tr>
+    <tr><td>Brick</td><td>200–300 mm</td><td>Medium</td><td>Medium</td><td>0.65</td><td><select class="select-material"><option>Selected</option><option selected>Compare</option></select></td></tr>
+    <tr><td>Concrete</td><td>200–250 mm</td><td>High</td><td>High</td><td>1.20</td><td><select class="select-material"><option>Selected</option><option selected>Compare</option></select></td></tr>
+  </tbody></table></div></div>
+  <div class="section-title">Composite Wall Builder</div>
+  <div class="grid g2"><div class="card"><div class="card-head"><h3>Recommended Stack</h3><small>Outside → Inside</small></div><div class="card-body">
+    <div class="material-stack"><div class="layer"><b>01 / External surface</b><span>Reflective / weather layer</span></div><div class="layer"><b>02 / Mud brick wall</b><span>450 mm • thermal mass</span></div><div class="layer"><b>03 / Straw insulation</b><span>100 mm • thermal resistance</span></div><div class="layer"><b>04 / Inner mud plaster</b><span>Interior thermal finish</span></div></div>
+  </div></div><div class="card"><div class="card-head"><h3>Material Impact</h3><small>relative performance</small></div><div class="card-body"><div class="heatmap">
+    <div class="heat"><b>−38%</b><span>Heat loss</span><div class="bar"></div></div><div class="heat"><b>+21%</b><span>Thermal lag</span><div class="bar"></div></div><div class="heat"><b>+17%</b><span>Comfort hours</span><div class="bar"></div></div><div class="heat"><b>−12%</b><span>Active energy</span><div class="bar"></div></div>
+  </div></div></div></div>
+</div></section>
+
+<section id="simulation" class="page">
+<div class="content">
+  <div class="hero"><div><div class="kicker">Thermal calculation engine</div><h1>Thermal Simulation</h1><p>24-hour prediction of indoor temperature, solar gain and heat flow using the defined shelter and ambient profile.</p></div><div class="hero-stat"><span>Simulation state</span><b id="simState">READY</b><em id="simNote">Inputs synchronized</em></div></div>
+  <div class="grid g2"><div class="card"><div class="card-head"><h3>Predicted Indoor vs Outdoor Temperature</h3><span class="tag">24 HOUR</span></div><div class="chart-wrap"><canvas id="tempChart"></canvas></div></div>
+  <div class="card"><div class="card-head"><h3>Thermal Comfort</h3><small>Target 20–24°C</small></div><div class="comfort"><div class="comfort-ring"><div><b>21/24</b><span>comfort hours</span></div></div><b style="font-size:12px">87% passive comfort</b><p style="color:var(--muted);font-size:10px;line-height:1.5">The optimized envelope keeps the predicted internal temperature within the defined comfort band for most of the simulated day.</p></div></div></div>
+  <div class="section-title">Heat Flow & Solar Balance</div>
+  <div class="grid g3">
+    <div class="card"><div class="card-head"><h3>Heat Flow</h3><span class="tag">Q = U × A × ΔT</span></div><div class="card-body"><div class="costline"><span>Walls</span><b>−1.62 kW</b></div><div class="costline"><span>Roof</span><b>−1.21 kW</b></div><div class="costline"><span>Openings</span><b>−0.69 kW</b></div><div class="costline"><span>Floor</span><b>−0.43 kW</b></div><div class="costline total"><span>Total heat loss</span><b>3.95 kW</b></div></div></div>
+    <div class="card"><div class="card-head"><h3>Solar Energy</h3><span class="tag">PASSIVE GAIN</span></div><div class="card-body"><div class="costline"><span>Solar radiation</span><b>640 W/m²</b></div><div class="costline"><span>Solar capture</span><b>8.1 kWh/day</b></div><div class="costline"><span>Passive contribution</span><b>42%</b></div><div class="progress"><i style="width:42%"></i></div></div></div>
+    <div class="card"><div class="card-head"><h3>Wind / Temperature</h3><span class="tag">CORRELATION</span></div><div class="chart-wrap" style="height:220px"><canvas id="windChart"></canvas></div></div>
+  </div>
+  <div class="section-title">Passive Design Recommendations</div>
+  <div class="grid g2"><div class="card"><div class="card-head"><h3>Optimization Engine</h3><small>Recommended actions</small></div><div class="card-body">
+    <div class="rec"><b>Enhance insulation</b><p>Use a composite mud-brick + local insulation wall to reduce envelope heat loss.</p><button>APPLIED</button></div>
+    <div class="rec"><b>Optimize solar orientation</b><p>Maintain a south-facing solar collection surface to use the region's high solar availability.</p><button>APPLIED</button></div>
+    <div class="rec"><b>Control openings</b><p>Minimize unnecessary north-facing openings and manage infiltration under high wind.</p><button>APPLIED</button></div>
+    <div class="rec"><b>Consider Trombe wall</b><p>Add a passive solar wall strategy where appropriate to increase thermal storage and night-time heat availability.</p><button>RECOMMENDED</button></div>
+  </div></div><div class="card"><div class="card-head"><h3>Performance Summary</h3><small>Optimized design</small></div><div class="card-body"><div class="costline"><span>Predicted minimum indoor</span><b>16.2°C</b></div><div class="costline"><span>Predicted maximum indoor</span><b>24.1°C</b></div><div class="costline"><span>Total heat loss</span><b>3.95 kW</b></div><div class="costline"><span>Solar gain</span><b>8.1 kWh/day</b></div><div class="costline"><span>Comfort duration</span><b style="color:var(--green)">21 / 24 h</b></div><div class="costline"><span>Active energy dependence</span><b style="color:var(--green)">13%</b></div></div></div></div>
+  <div class="footer-actions"><button class="btn" onclick="showPage('compare')">Compare Designs</button><button class="btn primary" onclick="showPage('reports')">Generate Design Report →</button></div>
+</div></section>
+
+<section id="compare" class="page">
+<div class="content">
+<div class="hero"><div><div class="kicker">Decision support</div><h1>Compare Designs</h1><p>Evaluate alternative material and geometry combinations under the same climate condition.</p></div></div>
+<div class="card"><div class="card-head"><h3>Thermal Performance Matrix</h3><span class="tag">SAME AMBIENT CONDITION</span></div><div class="card-body"><table class="compare">
+<thead><tr><th>Parameter</th><th>Design A</th><th>Design B</th><th class="best">Optimized</th></tr></thead>
+<tbody>
+<tr><td>Wall</td><td>Brick 300 mm</td><td>Mud 450 mm</td><td class="best">Mud + insulation</td></tr>
+<tr><td>Roof</td><td>Metal sheet</td><td>Tile</td><td class="best">Insulated sloped roof</td></tr>
+<tr><td>Orientation</td><td>East</td><td>South</td><td class="best">South</td></tr>
+<tr><td>Roof angle</td><td>20°</td><td>30°</td><td class="best">35°</td></tr>
+<tr><td>Minimum indoor temp.</td><td>7.0°C</td><td>11.0°C</td><td class="best">16.2°C</td></tr>
+<tr><td>Maximum indoor temp.</td><td>29.0°C</td><td>26.0°C</td><td class="best">24.1°C</td></tr>
+<tr><td>Comfort hours</td><td>9 / 24</td><td>15 / 24</td><td class="best">21 / 24</td></tr>
+<tr><td>Heat loss</td><td>7.2 kW</td><td>5.1 kW</td><td class="best">3.95 kW</td></tr>
+<tr><td>Solar gain</td><td>4.2 kWh</td><td>6.8 kWh</td><td class="best">8.1 kWh</td></tr>
+<tr><td>Estimated cost</td><td>₹2.10 L</td><td>₹2.40 L</td><td class="best">₹2.60 L</td></tr>
+</tbody></table></div></div>
+<div class="section-title">Design Decision</div><div class="card"><div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:20px"><div><b style="font-size:14px">Optimized design provides the strongest thermal-comfort performance.</b><p style="color:var(--muted);font-size:10px;margin:6px 0">The recommendation prioritizes passive thermal maintenance while respecting the defined shelter inputs and budget.</p></div><button class="btn primary" onclick="showPage('reports')">Use Optimized Design →</button></div></div>
+</div></section>
+
+<section id="reports" class="page">
+<div class="content">
+<div class="hero"><div><div class="kicker">Engineering documentation</div><h1>Design Report</h1><p>Generate a clean summary for design review, DRDO evaluation or project documentation.</p></div></div>
+<div class="grid g2"><div class="card"><div class="card-head"><h3>Report Contents</h3><span class="tag">PDF READY</span></div><div class="card-body">
+<div class="costline"><span>01 — Location & climate</span><b>Included</b></div><div class="costline"><span>02 — Shelter geometry</span><b>Included</b></div><div class="costline"><span>03 — Material specification</span><b>Included</b></div><div class="costline"><span>04 — Thermal simulation</span><b>Included</b></div><div class="costline"><span>05 — Solar energy estimate</span><b>Included</b></div><div class="costline"><span>06 — Heat flow details</span><b>Included</b></div><div class="costline"><span>07 — Optimized recommendation</span><b>Included</b></div><div class="costline"><span>08 — Cost estimate</span><b>Included</b></div>
+<div class="footer-actions"><button class="btn primary" id="pdfBtn">Download Summary PDF</button></div>
+</div></div>
+<div class="card"><div class="card-head"><h3>Project Cost</h3><small>Illustrative estimate</small></div><div class="card-body">
+<div class="costline"><span>Envelope materials</span><b>₹3,28,000</b></div><div class="costline"><span>Insulation & passive systems</span><b>₹38,000</b></div><div class="costline"><span>Openings / roof</span><b>₹1,04,000</b></div><div class="costline total"><span>Total estimate</span><b>₹4,70,000</b></div><div class="progress"><i style="width:94%"></i></div><p style="color:var(--muted);font-size:9px;margin-top:8px">Budget used: ₹4.70 L of ₹5.00 L. Values are prototype estimates and should be replaced by validated regional cost data.</p>
+</div></div></div>
+</div></section>
+
+</main>
+</div>
+<div class="toast" id="toast">Simulation updated successfully.</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const toast=(msg)=>{const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400)}
+function showPage(id){
+ document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
+ document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
+ window.scrollTo({top:0,behavior:'smooth'});
+ if(id==='simulation') setTimeout(renderCharts,100);
+}
+window.showPage=showPage;
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
+
+let map=L.map('map',{zoomControl:true}).setView([34.1526,77.5771],8);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors'}).addTo(map);
+const dynamicIcon=L.divIcon({
+  className:'',
+  html:'<div class="dynamic-marker"><div class="pulse"></div><div class="pulse2"></div><div class="core"></div></div>',
+  iconSize:[30,30],iconAnchor:[15,15],popupAnchor:[0,-16]
+});
+let marker=L.marker([34.1526,77.5771],{icon:dynamicIcon})
+  .addTo(map).bindPopup('<b>Leh, Ladakh</b><br>Selected design region').openPopup();
+map.on('click',e=>{
+ marker.setLatLng(e.latlng);
+ map.flyTo(e.latlng,Math.max(map.getZoom(),9),{duration:.8});
+ $('lat').textContent=e.latlng.lat.toFixed(4)+'°'; $('lng').textContent=e.latlng.lng.toFixed(4)+'°';
+ marker.bindPopup('<b>Selected location</b><br>'+e.latlng.lat.toFixed(4)+'°, '+e.latlng.lng.toFixed(4)+'°').openPopup();
+ toast('Location updated — climate profile ready for API connection.');
+});
+map.on('zoomend',()=>{
+  const z=map.getZoom();
+  const badge=document.querySelector('.map-location-badge');
+  if(badge) badge.style.opacity=Math.min(1,0.72+(z-7)*0.08);
+});
+
+document.querySelectorAll('.ori').forEach(x=>x.addEventListener('click',()=>{document.querySelectorAll('.ori').forEach(y=>y.classList.remove('selected'));x.classList.add('selected');}));
+$('roof').addEventListener('input',e=>$('roofVal').textContent=e.target.value+'°');
+['length','width','height'].forEach(id=>$(id).addEventListener('input',()=>{$('dims').textContent=`${$('length').value} × ${$('width').value} × ${$('height').value} m`}));
+
+let tempChart,windChart;
+function renderCharts(){
+ const labels=['00','02','04','06','08','10','12','14','16','18','20','22','24'];
+ const outdoor=[-15,-17,-18,-16,-12,-7,-3,1,0,-4,-8,-12,-15];
+ const indoor=[16.2,16.1,16.0,16.3,17.8,19.7,21.4,23.1,24.1,23.0,21.5,19.0,17.0];
+ const ctx=$('tempChart').getContext('2d');
+ if(tempChart) tempChart.destroy();
+ tempChart=new Chart(ctx,{type:'line',data:{labels,datasets:[
+ {label:'Outdoor',data:outdoor,borderColor:'#6d8cff',backgroundColor:'rgba(92,124,255,.08)',tension:.4,fill:false,borderWidth:2,pointRadius:2},
+ {label:'Indoor',data:indoor,borderColor:'#48d7ff',backgroundColor:'rgba(20,159,201,.10)',tension:.4,fill:true,borderWidth:2,pointRadius:2},
+ {label:'Comfort upper',data:Array(labels.length).fill(24),borderColor:'#48e0ad',borderDash:[5,5],borderWidth:1,pointRadius:0},
+ {label:'Comfort lower',data:Array(labels.length).fill(20),borderColor:'#48e0ad',borderDash:[5,5],borderWidth:1,pointRadius:0}
+ ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8fa5bd',font:{size:9}}}},scales:{x:{grid:{color:'rgba(70,100,135,.09)'},ticks:{color:'#7189a3',font:{size:9}}},y:{grid:{color:'rgba(70,100,135,.09)'},ticks:{color:'#7189a3',font:{size:9}},title:{display:true,text:'Temperature °C',color:'#7189a3',font:{size:9}}}}}});
+ const c2=$('windChart').getContext('2d'); if(windChart) windChart.destroy();
+ windChart=new Chart(c2,{type:'scatter',data:{datasets:[{label:'Wind vs temperature',data:[{x:6,y:20.5},{x:9,y:20.9},{x:12,y:21.5},{x:15,y:22.2},{x:18,y:21.8},{x:21,y:21.2},{x:24,y:20.4}],backgroundColor:'#48d7ff',borderColor:'#48d7ff',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:'Wind km/h',color:'#7189a3',font:{size:9}},grid:{color:'rgba(70,100,135,.09)'},ticks:{color:'#7189a3',font:{size:8}}},y:{title:{display:true,text:'Indoor °C',color:'#7189a3',font:{size:9}},grid:{color:'rgba(70,100,135,.09)'},ticks:{color:'#7189a3',font:{size:8}}}}}});
+}
+renderCharts();
+
+$('simulateBtn').addEventListener('click',()=>{
+ $('simState').textContent='CALCULATING'; $('simNote').textContent='Running 24-hour thermal model…';
+ setTimeout(()=>{showPage('simulation');$('simState').textContent='COMPLETE';$('simNote').textContent='Design optimized for current inputs';toast('Thermal simulation complete — optimized design ready.');},800);
+});
+$('resetBtn').addEventListener('click',()=>{ $('length').value=12;$('width').value=8;$('height').value=3.5;$('thickness').value=450;$('budget').value=500000;$('roof').value=35;$('roofVal').textContent='35°';$('dims').textContent='12 × 8 × 3.5 m';toast('Design inputs reset.');});
+$('newBtn').addEventListener('click',()=>{showPage('studio');toast('New design workspace ready.');});
+$('pdfBtn').addEventListener('click',()=>toast('PDF export hook ready — connect jsPDF/Puppeteer in backend for final report generation.'));
+</script>
+</body>
+</html>
